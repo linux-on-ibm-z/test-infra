@@ -104,6 +104,6 @@ ENV IMAGE=${IMAGE_ARG}
 # everything below will be triggered on every new image tag ...
 ADD ["kops-e2e-runner.sh", \
     "kubetest", \
-    "https://raw.githubusercontent.com/kubernetes/kubernetes/master/cluster/get-kube.sh", \
+    "https://raw.githubusercontent.com/linux-on-ibm-z/kubernetes/s390x-CI/cluster/get-kube.sh", \
     "/workspace/"]
 RUN ["chmod", "+x", "/workspace/get-kube.sh"]
