@@ -23,9 +23,9 @@ FROM gcr.io/k8s-testimages/bootstrap:v20200430-be2a8a9
 ENV KUBETEST_IN_DOCKER="true"
 
 # Go standard envs
-ENV GOPATH /go 
+ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$PATH
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-s390x PATH=$JAVA_HOME/bin:$PATH
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-s390x PATH=$JAVA_HOME/bin:$PATH:/opt/bazel/output/
 
 RUN mkdir -p /go/bin
 ENV PATH $GOPATH/bin:$PATH
@@ -79,10 +79,11 @@ RUN mkdir -p $GOPATH/src/github.com/cloudflare \
     && chmod -R +w . \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && sed -i '472i"//src/conditions:linux_s390x": "*.so *.jnilib *.dll",' third_party/BUILD  \
-	&& sed -i '167i\\t"//src/conditions:linux_s390x": ["@bazel_tools//tools/jdk:jni_md_header-linux"],' src/main/java/com/google/devtools/build/lib/syntax/BUILD \
+    && sed -i '167i\\t"//src/conditions:linux_s390x": ["@bazel_tools//tools/jdk:jni_md_header-linux"],' src/main/java/com/google/devtools/build/lib/syntax/BUILD \
     && sed -i '176i\\t"//src/conditions:linux_s390x": ["../../../../../../../../../external/bazel_tools/tools/jdk/include/linux"],' src/main/java/com/google/devtools/build/lib/syntax/BUILD \
-    && sed -i "152/-classpath/-J-Xms1g -J-Xmx1g -classpath/" scripts/bootstrap/compile.sh \
-    && sed -i "69s/javac/javac -J-Xms1g -J-Xmx1g/" tools/build_rules/java_rules_skylark.bzl
+    && sed -i "152s/-classpath/-J-Xms1g -J-Xmx1g -classpath/" scripts/bootstrap/compile.sh \
+    && sed -i "69s/javac/javac -J-Xms1g -J-Xmx1g/" tools/build_rules/java_rules_skylark.bzl \
+    && env EXTRA_BAZEL_ARGS="--host_javabase=@local_jdk//:jdk" bash ./compile.sh 
 
 COPY --from=old \
     /usr/local/bin/bazel /usr/local/lib/bazel/bin/bazel-${OLD_BAZEL_VERSION}
