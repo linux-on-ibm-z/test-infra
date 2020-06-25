@@ -34,11 +34,21 @@ if [[ -z "${KOPS_BASE_URL:-}" ]]; then
   fi
 fi
 
-curl -fsS --retry 3 -o "/workspace/kops" "${KOPS_BASE_URL}/linux/amd64/kops"
+#curl -fsS --retry 3 -o "/workspace/kops" "${KOPS_BASE_URL}/linux/amd64/kops"
+apt update && apt install -y make wget git gcc
+export $GOPATH=`pwd`
+mkdir -p $GOPATH/src/k8s.io
+cd $GOPATH/src/k8s.io
+git clone https://github.com/kubernetes/kops.git
+cd kops/
+git checkout v1.17.0
+make all
+cp $GOPATH/src/k8s.io/kops/.build/local/kops /workspace/kops
+cp $GOPATH/src/k8s.io/kops/.build/local/* /usr/bin/
 chmod +x "/workspace/kops"
 
 # Get kubectl on the path (works after e2e-runner.sh:unpack_binaries)
-export PRIORITY_PATH="${WORKSPACE}/kubernetes/platforms/linux/amd64"
+export PRIORITY_PATH="${WORKSPACE}/kubernetes/platforms/linux/s390x"
 
 e2e_args=( \
   --deployment=kops \
@@ -60,40 +70,40 @@ if [[ "${KOPS_DEPLOY_LATEST_KUBE:-}" =~ ^[yY]$ ]]; then
 fi
 
 # Define a custom instance lister for cluster/log-dump/log-dump.sh.
-function log_dump_custom_get_instances() {
-  local -r role=$1
-  local kops_regions
-  IFS=', ' read -r -a kops_regions <<< "${KOPS_REGIONS:-us-west-2}"
-  for region in "${kops_regions[@]}"; do
-    aws ec2 describe-instances \
-      --region "${region}" \
-      --filter \
-        "Name=tag:KubernetesCluster,Values=$(kubectl config current-context)" \
-        "Name=tag:k8s.io/role/${role},Values=1" \
-        "Name=instance-state-name,Values=running" \
-      --query "Reservations[].Instances[].PublicDnsName" \
-      --output text
-  done
-}
-pip install awscli # Only needed for log_dump_custom_get_instances
-export -f log_dump_custom_get_instances # Export to cluster/log-dump/log-dump.sh
+#function log_dump_custom_get_instances() {
+#  local -r role=$1
+#  local kops_regions
+#  IFS=', ' read -r -a kops_regions <<< "${KOPS_REGIONS:-us-west-2}"
+#  for region in "${kops_regions[@]}"; do
+#    aws ec2 describe-instances \
+#      --region "${region}" \
+#      --filter \
+#        "Name=tag:KubernetesCluster,Values=$(kubectl config current-context)" \
+#        "Name=tag:k8s.io/role/${role},Values=1" \
+#        "Name=instance-state-name,Values=running" \
+#      --query "Reservations[].Instances[].PublicDnsName" \
+#      --output text
+#  done
+#}
+#pip install awscli # Only needed for log_dump_custom_get_instances
+#export -f log_dump_custom_get_instances # Export to cluster/log-dump/log-dump.sh
 
 kubetest "${e2e_args[@]}" "${@}"
 
-if [[ -n "${KOPS_PUBLISH_GREEN_PATH:-}" ]]; then
-
-  if ! which gsutil; then
-    export PATH=/google-cloud-sdk/bin:${PATH}
-    if ! which gsutil; then
-      echo "Can't find gsutil" >&2
-      exit 1
-    fi
-  fi
+#if [[ -n "${KOPS_PUBLISH_GREEN_PATH:-}" ]]; then
+#
+#  if ! which gsutil; then
+#    export PATH=/google-cloud-sdk/bin:${PATH}
+#    if ! which gsutil; then
+#      echo "Can't find gsutil" >&2
+#      exit 1
+#    fi
+#  fi
 
   # TODO(krzyzacy) - debugging
-  gcloud config list
-  gcloud auth list
+#  gcloud config list
+#  gcloud auth list
 
-  echo "Publish version to ${KOPS_PUBLISH_GREEN_PATH}: ${KOPS_BASE_URL}"
-  echo "${KOPS_BASE_URL}" | gsutil -h "Cache-Control:private, max-age=0, no-transform" cp - "${KOPS_PUBLISH_GREEN_PATH}"
-fi
+#  echo "Publish version to ${KOPS_PUBLISH_GREEN_PATH}: ${KOPS_BASE_URL}"
+#  echo "${KOPS_BASE_URL}" | gsutil -h "Cache-Control:private, max-age=0, no-transform" cp - "${KOPS_PUBLISH_GREEN_PATH}"
+#fi
