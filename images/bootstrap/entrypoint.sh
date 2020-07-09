@@ -19,13 +19,15 @@ set -o pipefail
 
 # get test-infra for latest bootstrap etc
 git clone https://github.com/kubernetes/test-infra
-
-BOOTSTRAP_UPLOAD_BUCKET_PATH=${BOOTSTRAP_UPLOAD_BUCKET_PATH:-"gs://kubernetes-jenkins/logs"}
+curl -o job.patch https://raw.githubusercontent.com/rajaskakodkar/utility/master/job.patch
+patch test-infra/jobs/config.json job.patch
+#BOOTSTRAP_UPLOAD_BUCKET_PATH=${BOOTSTRAP_UPLOAD_BUCKET_PATH:-"gs://kubernetes-jenkins/logs"}
 
 # actually start bootstrap and the job, under the runner (which handles dind etc.)
 /usr/local/bin/runner.sh \
     ./test-infra/jenkins/bootstrap.py \
-        --job="${JOB_NAME}" \
-        --service-account="${GOOGLE_APPLICATION_CREDENTIALS}" \
-        --upload="${BOOTSTRAP_UPLOAD_BUCKET_PATH}" \
+        --job=kubernetes \
+        --repo=k8s.io/kubernetes=v1.18.4 \
+#        --service-account="${GOOGLE_APPLICATION_CREDENTIALS}" \
+#        --upload="${BOOTSTRAP_UPLOAD_BUCKET_PATH}" \
         "$@"
