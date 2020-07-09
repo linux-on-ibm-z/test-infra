@@ -14,7 +14,7 @@
 
 # Includes basic workspace setup, with gcloud and a bootstrap runner
 
-FROM debian:buster
+FROM ubuntu:18.04
 
 WORKDIR /workspace
 RUN mkdir -p /workspace
@@ -53,19 +53,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install gcloud
 
-ENV PATH=/google-cloud-sdk/bin:/workspace:${PATH} \
-    CLOUDSDK_CORE_DISABLE_PROMPTS=1
+#ENV PATH=/google-cloud-sdk/bin:/workspace:${PATH} \
+#    CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
-RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz && \
-    tar xzf google-cloud-sdk.tar.gz -C / && \
-    rm google-cloud-sdk.tar.gz && \
-    /google-cloud-sdk/install.sh \
-        --disable-installation-options \
-        --bash-completion=false \
-        --path-update=false \
-        --usage-reporting=false && \
-    gcloud components install alpha beta kubectl && \
-    gcloud info | tee /workspace/gcloud-info.txt
+#RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz && \
+#    tar xzf google-cloud-sdk.tar.gz -C / && \
+#    rm google-cloud-sdk.tar.gz && \
+#    /google-cloud-sdk/install.sh \
+#        --disable-installation-options \
+#        --bash-completion=false \
+#        --path-update=false \
+#        --usage-reporting=false && \
+#    gcloud components install alpha beta kubectl && \
+#    gcloud info | tee /workspace/gcloud-info.txt
 
 
 #
@@ -81,6 +81,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg2 \
     software-properties-common \
+    iptables \
     lsb-release && \
     rm -rf /var/lib/apt/lists/*
 
@@ -88,7 +89,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg \
     | apt-key add - && \
     add-apt-repository \
-    "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+    "deb [arch=s390x] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
     $(lsb_release -cs) stable"
 
 # Install Docker
@@ -98,11 +99,12 @@ RUN curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID"
 # Trying to remount these makes for a very noisy error block in the beginning of
 # the pod logs, so we just comment out the call to it... :shrug:
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends docker-ce=5:19.03.* && \
+    apt-cache madison docker && \
+    apt-get install -y --no-install-recommends docker-ce && \
     rm -rf /var/lib/apt/lists/* && \
-    sed -i 's/cgroupfs_mount$/#cgroupfs_mount\n/' /etc/init.d/docker \
-    && update-alternatives --set iptables /usr/sbin/iptables-legacy \
-    && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+    sed -i 's/cgroupfs_mount$/#cgroupfs_mount\n/' /etc/init.d/docker
+#    && update-alternatives --set iptables /usr/sbin/iptables-legacy \
+#    && update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 
 
 
@@ -120,7 +122,7 @@ RUN mkdir /docker-graph
 
 # note the runner is also responsible for making docker in docker function if
 # env DOCKER_IN_DOCKER_ENABLED is set and similarly responsible for generating
-# .bazelrc files if bazel remote caching is enabled 
+# .bazelrc files if bazel remote caching is enabled
 COPY ["entrypoint.sh", "runner.sh", "create_bazel_cache_rcs.sh", \
         "/usr/local/bin/"]
 
