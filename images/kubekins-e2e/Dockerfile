@@ -38,7 +38,7 @@ RUN mkdir -p /go/src/k8s.io/kubernetes \
 # - graphviz package for graphing profiles
 # - bc for shell to junit
 # - rpm for building RPMs with Bazel
-RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential openjdk-11-jdk python3 zip unzip wget \
+RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential sudo openjdk-11-jdk python3 zip unzip wget net-tools \
     bc git \
     graphviz \
     rpm && \
@@ -55,7 +55,7 @@ RUN rm -f $(which kubectl) && \
     chmod +x /usr/local/bin/kubectl
 
 # install go
-ARG GO_VERSION=1.13.5
+ARG GO_VERSION=1.14.4
 ENV GO_TARBALL "go${GO_VERSION}.linux-s390x.tar.gz"
 RUN wget -q "https://storage.googleapis.com/golang/${GO_TARBALL}" && \
     tar xzf "${GO_TARBALL}" -C /usr/local && \
@@ -65,13 +65,16 @@ RUN wget -q "https://storage.googleapis.com/golang/${GO_TARBALL}" && \
 # The invocation at the end is to prevent download failures downloads as in the bug.
 # TODO(porridge): bump CFSSL_VERSION to one where cfssljson supports the -version flag and test it as well.
 ARG CFSSL_VERSION
+ARG ETCD_VERSION=3.4.9
+ENV ETCD_UNSUPPORTED_ARCH=s390x
 RUN mkdir -p $GOPATH/src/github.com/cloudflare \
     && cd $GOPATH/src/github.com/cloudflare && git clone https://github.com/cloudflare/cfssl.git \
     && cd cfssl && git checkout 1.2.0 \
     && go install github.com/cloudflare/cfssl/cmd/... \
     && mv $GOPATH/bin/cfssl $GOPATH/bin/cfssljson /usr/local/bin \
     && cfssl version \
-# Install bazel
+    && rm -rf $GOPATH/src/github.com/cloudflare \
+    # Install bazel
     && cd /opt \
     && mkdir bazel && cd bazel \
     && wget https://github.com/bazelbuild/bazel/releases/download/2.2.0/bazel-2.2.0-dist.zip \
@@ -83,8 +86,15 @@ RUN mkdir -p $GOPATH/src/github.com/cloudflare \
     && sed -i '176i\\t"//src/conditions:linux_s390x": ["../../../../../../../../../external/bazel_tools/tools/jdk/include/linux"],' src/main/java/com/google/devtools/build/lib/syntax/BUILD \
     && sed -i "152s/-classpath/-J-Xms1g -J-Xmx1g -classpath/" scripts/bootstrap/compile.sh \
     && sed -i "69s/javac/javac -J-Xms1g -J-Xmx1g/" tools/build_rules/java_rules_skylark.bzl \
-    && env EXTRA_BAZEL_ARGS="--host_javabase=@local_jdk//:jdk" bash ./compile.sh 
-
+    && env EXTRA_BAZEL_ARGS="--host_javabase=@local_jdk//:jdk" bash ./compile.sh \
+    # Install etcd
+    && mkdir -p $GOPATH/src/github.com/coreos \
+    && cd $GOPATH/src/github.com/coreos \
+    && git clone https://github.com/coreos/etcd \
+    && cd etcd && git checkout v${ETCD_VERSION} \
+    && go mod vendor \
+    &&  ./build && cd bin && sudo cp -rf etcd etcdctl /usr/bin/ \
+    && rm -rf $GOPATH/src/github.com/coreos
 COPY --from=old \
     /usr/local/bin/bazel /usr/local/lib/bazel/bin/bazel-${OLD_BAZEL_VERSION}
 
@@ -102,6 +112,7 @@ RUN [ "${UPGRADE_DOCKER_ARG}" = "true" ] && \
 ARG IMAGE_ARG
 ENV IMAGE=${IMAGE_ARG}
 
+# COPY ./bazel /usr/bin/bazel
 # everything below will be triggered on every new image tag ...
 ADD ["kops-e2e-runner.sh", \
     "kubetest", \
