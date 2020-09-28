@@ -36,6 +36,8 @@ def repositories():
     http_archive(
         name = "io_bazel_rules_k8s",
         strip_prefix = "rules_k8s-0.5",
+        patch_args = ["-p1"],
+        patches = ["@//:patch_k8s.diff"],
         urls = ["https://github.com/bazelbuild/rules_k8s/archive/v0.5.tar.gz"],
         sha256 = "773aa45f2421a66c8aa651b8cecb8ea51db91799a405bd7b913d77052ac7261a",
     )
@@ -43,6 +45,8 @@ def repositories():
     # https://github.com/bazelbuild/rules_nodejs
     http_archive(
         name = "build_bazel_rules_nodejs",
+        patch_args = ["-p1"],
+        patches = ["@//:patch_nodejs.diff"],
         sha256 = "9abd649b74317c9c135f4810636aaa838d5bea4913bfa93a85c2f52a919fdaf3",
         urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.36.0/rules_nodejs-0.36.0.tar.gz"],
     )
