@@ -70,3 +70,11 @@ def repositories():
         repository = "k8s-testimages/launcher.gcr.io/google/bazel",
         tag = "v20200609-e7bfd25-test-infra",
     )
+
+    container_pull(
+        name = "alpine-base-s390x",
+        digest = "sha256:80e91290c38f8645d41cf790147dfde5806cc6a34d1f6ec093a0adff4265da6b",
+        registry = "docker.io",
+        repository = "alpine",
+        tag = "20200626",
+    )   
