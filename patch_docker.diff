@@ -140,3 +140,4 @@ index 5a6c889..4e37ddd 100644
 +            sha256 = "8c9986b2b506febbff737090d9ec485cec1376c52789747573521a85194341c1",
              urls = [("https://storage.googleapis.com/rules_docker/" + RULES_DOCKER_GO_BINARY_RELEASE + "/loader-darwin-amd64")],
          )
+
