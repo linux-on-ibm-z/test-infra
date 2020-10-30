@@ -1,8 +1,8 @@
 diff --git a/container/load.bzl b/container/load.bzl
-index 61de3ae..b4b48ab 100644
+index 61de3ae..16e157b 100644
 --- a/container/load.bzl
 +++ b/container/load.bzl
-@@ -33,9 +33,12 @@ container_import(
+@@ -33,9 +33,13 @@ container_import(
      layers = glob(["*.tar.gz"]),
  )""")
 
@@ -10,13 +10,14 @@ index 61de3ae..b4b48ab 100644
 +    loader = repository_ctx.attr._loader_linux_amd64
      if repository_ctx.os.name.lower().startswith("mac os"):
          loader = repository_ctx.attr._loader_darwin
-+    arch = repository_ctx.execute(["uname", "-m"]).stdout.strip()
-+    if arch == "s390x":
-+        loader = repository_ctx.attr.loader_linux_s390x
++    elif repository_ctx.os.name.lower().startswith("linux"):
++        arch = repository_ctx.execute(["uname", "-m"]).stdout.strip()
++        if arch == "s390x":
++           loader = repository_ctx.attr._loader_linux_s390x
 
      result = repository_ctx.execute([
          repository_ctx.path(loader),
-@@ -59,9 +62,14 @@ container_load = repository_rule(
+@@ -59,9 +63,14 @@ container_load = repository_rule(
              default = Label("@loader_darwin//file:downloaded"),
              cfg = "host",
          ),
@@ -34,7 +35,7 @@ index 61de3ae..b4b48ab 100644
          ),
      },
 diff --git a/container/pull.bzl b/container/pull.bzl
-index 74f8b4b..7320bfc 100644
+index 74f8b4b..6ef2468 100644
 --- a/container/pull.bzl
 +++ b/container/pull.bzl
 @@ -65,9 +65,15 @@ _container_pull_attrs = {
@@ -55,22 +56,24 @@ index 74f8b4b..7320bfc 100644
          cfg = "host",
          doc = "(optional) Exposed to provide a way to test other pullers on Linux",
      ),
-@@ -97,9 +103,12 @@ def _impl(repository_ctx):
+@@ -96,10 +102,13 @@ def _impl(repository_ctx):
+     repository_ctx.file("image/BUILD", "")
 
      import_rule_tags = "[\"{}\"]".format("\", \"".join(repository_ctx.attr.import_tags))
-
+-
 -    puller = repository_ctx.attr.puller_linux
 +    puller = repository_ctx.attr.puller_linux_amd64
      if repository_ctx.os.name.lower().startswith("mac os"):
          puller = repository_ctx.attr.puller_darwin
-+    arch = repository_ctx.execute(["uname", "-m"]).stdout.strip()
-+    if arch == "s390x":
-+        puller = repository_ctx.attr.puller_linux_s390x
++    elif repository_ctx.os.name.lower().startswith("linux"):
++        arch = repository_ctx.execute(["uname", "-m"]).stdout.strip()
++        if arch == "s390x":
++           puller = repository_ctx.attr.puller_linux_s390x
 
      args = [
          repository_ctx.path(puller),
 diff --git a/repositories/repositories.bzl b/repositories/repositories.bzl
-index 5a6c889..4e37ddd 100644
+index 5a6c889..f545658 100644
 --- a/repositories/repositories.bzl
 +++ b/repositories/repositories.bzl
 @@ -25,42 +25,58 @@ load(
