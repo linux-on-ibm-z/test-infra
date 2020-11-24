@@ -25,7 +25,7 @@ go_binary(
 
 prow_image(
     name = "image",
-    base = "@git-base//image",
+    base = "@alpine-git//image",
     component = NAME,
     files = [
         "github_known_hosts",

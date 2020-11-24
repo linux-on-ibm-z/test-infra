@@ -11,7 +11,7 @@ filegroup(
 
 container_image(
     name = "asset-base",
-    base = "@git-base//image",
+    base = "@alpine-git//image",
     # With paths relative to the current directory.
     data_path = ".",
     # Add files under into the root directory.

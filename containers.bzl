@@ -72,9 +72,9 @@ def repositories():
     )
 
     container_pull(
-        name = "alpine-base-s390x",
-        digest = "sha256:80e91290c38f8645d41cf790147dfde5806cc6a34d1f6ec093a0adff4265da6b",
+        name = "alpine-git",
+        digest = "sha256:88e06aad911902679d00ae319225d23eac98319a35f9c92d74b5f6d1aad63c1e",
         registry = "docker.io",
-        repository = "alpine",
-        tag = "20200626",
+        repository = "alpine/git",
+        tag = "latest",
     )   

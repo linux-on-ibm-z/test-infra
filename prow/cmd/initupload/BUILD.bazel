@@ -25,7 +25,7 @@ go_binary(
 
 prow_image(
     name = "image",
-    base = "@alpine-base//image",
+    base = "@alpine-git//image",
     component = NAME,
     symlinks = {"/initupload": "/app/prow/cmd/initupload/app.binary"},
     visibility = ["//visibility:public"],
