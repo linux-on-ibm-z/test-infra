@@ -1,5 +1,5 @@
 diff --git a/.bazelrc b/.bazelrc
-index 8fe05eaa20..e310490a52 100644
+index 7e4a11b8071..d1ad14c7938 100644
 --- a/.bazelrc
 +++ b/.bazelrc
 @@ -3,11 +3,11 @@ build --workspace_status_command=./hack/print-workspace-status.sh
@@ -17,22 +17,23 @@ index 8fe05eaa20..e310490a52 100644
  # only build tests when testing
  test --build_tests_only
 diff --git a/containers.bzl b/containers.bzl
-index 8927c767e9..0748c3b93f 100644
+index 8927c767e9f..5e8b33389e1 100644
 --- a/containers.bzl
 +++ b/containers.bzl
-@@ -70,3 +70,10 @@ def repositories():
+@@ -70,3 +70,11 @@ def repositories():
          repository = "k8s-testimages/launcher.gcr.io/google/bazel",
          tag = "v20200609-e7bfd25-test-infra",
      )
++
 +    container_pull(
-+        name = "alpine-base-s390x",
-+        digest = "sha256:80e91290c38f8645d41cf790147dfde5806cc6a34d1f6ec093a0adff4265da6b",
++        name = "alpine-git",
++        digest = "sha256:88e06aad911902679d00ae319225d23eac98319a35f9c92d74b5f6d1aad63c1e",
 +        registry = "docker.io",
-+        repository = "alpine",
-+        tag = "20200626",
++        repository = "alpine/git",
++        tag = "latest",
 +    )
 diff --git a/load.bzl b/load.bzl
-index 0a1fd340b8..01531d1dfe 100644
+index 0a1fd340b84..01531d1dfee 100644
 --- a/load.bzl
 +++ b/load.bzl
 @@ -30,12 +30,16 @@ def repositories():
@@ -61,8 +62,34 @@ index 0a1fd340b8..01531d1dfe 100644
          sha256 = "9abd649b74317c9c135f4810636aaa838d5bea4913bfa93a85c2f52a919fdaf3",
          urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.36.0/rules_nodejs-0.36.0.tar.gz"],
      )
+diff --git a/prow/cmd/clonerefs/BUILD.bazel b/prow/cmd/clonerefs/BUILD.bazel
+index 19ed73ba19e..e60dd6c3d4c 100644
+--- a/prow/cmd/clonerefs/BUILD.bazel
++++ b/prow/cmd/clonerefs/BUILD.bazel
+@@ -25,7 +25,7 @@ go_binary(
+ 
+ prow_image(
+     name = "image",
+-    base = "@git-base//image",
++    base = "@alpine-git//image",
+     component = NAME,
+     files = [
+         "github_known_hosts",
+diff --git a/prow/cmd/deck/BUILD.bazel b/prow/cmd/deck/BUILD.bazel
+index 34a59a6d312..6e93e0a5de5 100644
+--- a/prow/cmd/deck/BUILD.bazel
++++ b/prow/cmd/deck/BUILD.bazel
+@@ -11,7 +11,7 @@ filegroup(
+ 
+ container_image(
+     name = "asset-base",
+-    base = "@git-base//image",
++    base = "@alpine-git//image",
+     # With paths relative to the current directory.
+     data_path = ".",
+     # Add files under into the root directory.
 diff --git a/prow/cmd/entrypoint/BUILD.bazel b/prow/cmd/entrypoint/BUILD.bazel
-index 44d136f5dc..29b1af96b2 100644
+index 44d136f5dc8..35fb790adbd 100644
 --- a/prow/cmd/entrypoint/BUILD.bazel
 +++ b/prow/cmd/entrypoint/BUILD.bazel
 @@ -25,7 +25,7 @@ go_binary(
@@ -70,12 +97,51 @@ index 44d136f5dc..29b1af96b2 100644
  prow_image(
      name = "image",
 -    base = "@git-base//image",
-+    base = "@alpine-base-s390x//image",
++    base = "@alpine-git//image",
      component = NAME,
      symlinks = {"/entrypoint": "/app/prow/cmd/entrypoint/app.binary"},
      visibility = ["//visibility:public"],
+diff --git a/prow/cmd/hook/BUILD.bazel b/prow/cmd/hook/BUILD.bazel
+index 5e8edda3405..66db3939c37 100644
+--- a/prow/cmd/hook/BUILD.bazel
++++ b/prow/cmd/hook/BUILD.bazel
+@@ -7,7 +7,7 @@ NAME = "hook"
+ 
+ prow_image(
+     name = "image",
+-    base = "@git-base//image",
++    base = "@alpine-git//image",
+     component = NAME,
+     visibility = ["//visibility:public"],
+ )
+diff --git a/prow/cmd/initupload/BUILD.bazel b/prow/cmd/initupload/BUILD.bazel
+index 314dbf64949..4567755c262 100644
+--- a/prow/cmd/initupload/BUILD.bazel
++++ b/prow/cmd/initupload/BUILD.bazel
+@@ -25,7 +25,7 @@ go_binary(
+ 
+ prow_image(
+     name = "image",
+-    base = "@alpine-base//image",
++    base = "@alpine-git//image",
+     component = NAME,
+     symlinks = {"/initupload": "/app/prow/cmd/initupload/app.binary"},
+     visibility = ["//visibility:public"],
+diff --git a/prow/cmd/sidecar/BUILD.bazel b/prow/cmd/sidecar/BUILD.bazel
+index fc396895767..0ee69ec7d36 100644
+--- a/prow/cmd/sidecar/BUILD.bazel
++++ b/prow/cmd/sidecar/BUILD.bazel
+@@ -25,7 +25,7 @@ go_binary(
+ 
+ prow_image(
+     name = "image",
+-    base = "@git-base//image",
++    base = "@alpine-git//image",
+     component = NAME,
+     symlinks = {"/sidecar": "/app/prow/cmd/sidecar/app.binary"},
+     visibility = ["//visibility:public"],
 diff --git a/prow/def.bzl b/prow/def.bzl
-index 451e07b5c8..7c43c35675 100644
+index 451e07b5c81..7c43c356758 100644
 --- a/prow/def.bzl
 +++ b/prow/def.bzl
 @@ -35,7 +35,7 @@ def prow_image(
