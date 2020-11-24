@@ -1,1 +1,111 @@
+diff --git a/config/prow/cluster/starter-s3.yaml b/config/prow/cluster/starter-s3.yaml
+index 6339e12d24..32d1923213 100644
+--- a/config/prow/cluster/starter-s3.yaml
++++ b/config/prow/cluster/starter-s3.yaml
+@@ -98,10 +98,10 @@ data:
+             path_strategy: explicit
+           s3_credentials_secret: s3-credentials
+           utility_images:
+-            clonerefs: gcr.io/k8s-prow/clonerefs:v20201123-dbc92a6558
+-            entrypoint: gcr.io/k8s-prow/entrypoint:v20201123-dbc92a6558
+-            initupload: gcr.io/k8s-prow/initupload:v20201123-dbc92a6558
+-            sidecar: gcr.io/k8s-prow/sidecar:v20201123-dbc92a6558
++            clonerefs: bazel/prow/cmd/clonerefs:image
++            entrypoint: bazel/prow/cmd/entrypoint:image
++            initupload: bazel/prow/cmd/initupload:image
++            sidecar: bazel/prow/cmd/sidecar:image
 
+     tide:
+       queries:
+@@ -239,8 +239,8 @@ spec:
+       terminationGracePeriodSeconds: 180
+       containers:
+       - name: hook
+-        image: gcr.io/k8s-prow/hook:v20201123-dbc92a6558
+-        imagePullPolicy: Always
++        image: bazel/prow/cmd/hook:image
++        imagePullPolicy: Never
+         args:
+         - --dry-run=false
+         - --config-path=/etc/config/config.yaml
+@@ -321,7 +321,7 @@ spec:
+       serviceAccountName: "sinker"
+       containers:
+       - name: sinker
+-        image: gcr.io/k8s-prow/sinker:v20201123-dbc92a6558
++        image: bazel/prow/cmd/sinker:image
+         args:
+         - --config-path=/etc/config/config.yaml
+         volumeMounts:
+@@ -359,7 +359,7 @@ spec:
+       terminationGracePeriodSeconds: 30
+       containers:
+       - name: deck
+-        image: gcr.io/k8s-prow/deck:v20201123-dbc92a6558
++        image: bazel/prow/cmd/deck:image
+         args:
+         - --config-path=/etc/config/config.yaml
+         - --plugin-config=/etc/plugins/plugins.yaml
+@@ -450,7 +450,7 @@ spec:
+       terminationGracePeriodSeconds: 30
+       containers:
+       - name: horologium
+-        image: gcr.io/k8s-prow/horologium:v20201123-dbc92a6558
++        image: bazel/prow/cmd/horologium:image
+         args:
+         - --dry-run=false
+         - --config-path=/etc/config/config.yaml
+@@ -485,7 +485,7 @@ spec:
+       serviceAccountName: "tide"
+       containers:
+       - name: tide
+-        image: gcr.io/k8s-prow/tide:v20201123-dbc92a6558
++        image: bazel/prow/cmd/tide:image
+         args:
+         - --dry-run=false
+         - --config-path=/etc/config/config.yaml
+@@ -584,7 +584,7 @@ spec:
+       terminationGracePeriodSeconds: 180
+       containers:
+       - name: statusreconciler
+-        image: gcr.io/k8s-prow/status-reconciler:v20201123-dbc92a6558
++        image: bazel/prow/cmd/status-reconciler:image
+         args:
+         - --dry-run=false
+         - --continue-on-error=true
+@@ -968,7 +968,7 @@ spec:
+     spec:
+       containers:
+       - name: ghproxy
+-        image: gcr.io/k8s-prow/ghproxy:v20201123-dbc92a6558
++        image: bazel/ghproxy:image
+         args:
+         - --cache-dir=/cache
+         - --cache-sizeGB=99
+@@ -1030,7 +1030,7 @@ spec:
+         - --github-endpoint=http://ghproxy
+         - --github-endpoint=https://api.github.com
+         - --enable-controller=plank
+-        image: gcr.io/k8s-prow/prow-controller-manager:v20201123-dbc92a6558
++        image: bazel/prow/cmd/prow-controller-manager:image
+         volumeMounts:
+         - name: github-token
+           mountPath: /etc/github
+@@ -1165,7 +1165,7 @@ spec:
+       terminationGracePeriodSeconds: 30
+       containers:
+       - name: crier
+-        image: gcr.io/k8s-prow/crier:v20201123-dbc92a6558
++        image: bazel/prow/cmd/crier:image
+         args:
+         - --blob-storage-workers=10
+         - --config-path=/etc/config/config.yaml
+@@ -1348,7 +1348,7 @@ spec:
+         volumeMounts:
+         - name: data
+           mountPath: "/data"
+-        image: minio/minio:latest
++        image: minio/minio:RELEASE.2020-09-02T18-19-50Z-s390x
+         args:
+         - server
+         - /data
