@@ -250,7 +250,7 @@ spec:
       containers:
       - name: hook
         image: gcr.io/k8s-prow/hook:v20210816-f9d80a9dc8
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         args:
         - --dry-run=false
         - --config-path=/etc/config/config.yaml
@@ -332,6 +332,7 @@ spec:
       containers:
       - name: sinker
         image: gcr.io/k8s-prow/sinker:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --config-path=/etc/config/config.yaml
         - --dry-run=false
@@ -371,6 +372,7 @@ spec:
       containers:
       - name: deck
         image: gcr.io/k8s-prow/deck:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --config-path=/etc/config/config.yaml
         - --plugin-config=/etc/plugins/plugins.yaml
@@ -461,6 +463,7 @@ spec:
       containers:
       - name: horologium
         image: gcr.io/k8s-prow/horologium:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --dry-run=false
         - --config-path=/etc/config/config.yaml
@@ -496,6 +499,7 @@ spec:
       containers:
       - name: tide
         image: gcr.io/k8s-prow/tide:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --dry-run=false
         - --config-path=/etc/config/config.yaml
@@ -599,6 +603,7 @@ spec:
       containers:
       - name: statusreconciler
         image: gcr.io/k8s-prow/status-reconciler:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --dry-run=false
         - --continue-on-error=true
@@ -947,6 +952,21 @@ subjects:
 - kind: ServiceAccount
   name: "statusreconciler"
 ---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume1
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/cache"
+---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -955,11 +975,12 @@ metadata:
     app: ghproxy
   name: ghproxy
 spec:
+  storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Gi
+      storage: 5Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -984,6 +1005,7 @@ spec:
       containers:
       - name: ghproxy
         image: gcr.io/k8s-prow/ghproxy:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --cache-dir=/cache
         - --cache-sizeGB=99
@@ -1046,6 +1068,7 @@ spec:
         - --github-endpoint=https://api.github.com
         - --enable-controller=plank
         image: gcr.io/k8s-prow/prow-controller-manager:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: github-token
           mountPath: /etc/github
@@ -1181,6 +1204,7 @@ spec:
       containers:
       - name: crier
         image: gcr.io/k8s-prow/crier:v20210816-f9d80a9dc8
+        imagePullPolicy: IfNotPresent
         args:
         - --blob-storage-workers=10
         - --config-path=/etc/config/config.yaml
@@ -1283,16 +1307,32 @@ subjects:
   namespace: prow
 ---
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/data"
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: minio
   namespace: prow
 spec:
+  storageClassName: manual
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 100Gi
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Secret
@@ -1303,11 +1343,11 @@ stringData:
   service-account.json: |
     {
       "region": "minio",
-      "access_key": "<<CHANGE_ME_MINIO_ACCESS_KEY>>",
+      "access_key": "minioadmin",
       "endpoint": "minio.prow.svc.cluster.local",
       "insecure": true,
       "s3_force_path_style": true,
-      "secret_key": "<<CHANGE_ME_MINIO_SECRET_KEY>>"
+      "secret_key": "minioadmin"
     }
 ---
 apiVersion: v1
@@ -1319,11 +1359,11 @@ stringData:
   service-account.json: |
     {
       "region": "minio",
-      "access_key": "<<CHANGE_ME_MINIO_ACCESS_KEY>>",
+      "access_key": "minioadmin",
       "endpoint": "minio.prow.svc.cluster.local",
       "insecure": true,
       "s3_force_path_style": true,
-      "secret_key": "<<CHANGE_ME_MINIO_SECRET_KEY>>"
+      "secret_key": "minioadmin"
     }
 ---
 apiVersion: apps/v1
@@ -1349,6 +1389,7 @@ spec:
       initContainers:
       - name: bucket-creator
         image: alpine
+        imagePullPolicy: IfNotPresent
         command:
         - mkdir
         - -p
@@ -1364,14 +1405,15 @@ spec:
         - name: data
           mountPath: "/data"
         image: minio/minio:latest
+        imagePullPolicy: IfNotPresent
         args:
         - server
         - /data
         env:
         - name: MINIO_ACCESS_KEY
-          value: "<<CHANGE_ME_MINIO_ACCESS_KEY>>"
+          value: "minioadmin"
         - name: MINIO_SECRET_KEY
-          value: "<<CHANGE_ME_MINIO_SECRET_KEY>>"
+          value: "minioadmin"
         - name: MINIO_REGION_NAME
           value: minio
         ports:
