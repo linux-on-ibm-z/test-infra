@@ -78,3 +78,11 @@ def repositories():
         repository = "k8s-testimages/launcher.gcr.io/google/bazel",
         tag = "v20210128-721ee66-test-infra",
     )
+
+    container_pull(
+        name = "alpine-git",
+        digest = "sha256:88e06aad911902679d00ae319225d23eac98319a35f9c92d74b5f6d1aad63c1e",
+        registry = "docker.io",
+        repository = "alpine/git",
+        tag = "latest",
+    )
