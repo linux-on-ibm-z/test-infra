@@ -138,14 +138,14 @@ periodics:
             cpu: 6
             memory: 20Gi
 
-  - name: ci-kubernetes-s390x-conformance-latest-kubetest2
-    cron: "0 2-23/3 * * *" # every 3h starting at 02:00 UTC
+  - name: ci-kubernetes-s390x-conformance-latest
+    cron: "0 2-23/4 * * *" # every 4h starting at 02:00 UTC
     cluster: k8s-infra-s390x-prow-build
     labels:
       preset-ibmcloud-cred-z: "true"
     decorate: true
     decoration_config:
-      timeout: 220m
+      timeout: 300m
     extra_refs:
       - base_ref: main
         org: kubernetes-sigs
@@ -153,8 +153,13 @@ periodics:
         workdir: true
     annotations:
       description: Runs conformance tests using kubetest2 against kubernetes ci latest on IBM VPC
+      fork-per-release: "true"
+      fork-per-release-cron: 0 1 * * *, 0 5 * * *, 0 9 * * *, 0 13 * * *, 0 17 * * *
+      fork-per-release-replacements: "MARKER_VERSION=latest.txt -> MARKER_VERSION=latest-{{.Version}}.txt"
       testgrid-dashboards: ibm-s390x-k8s, conformance-s390x, ibm-k8s-e2e
-      testgrid-tab-name: ci-kubernetes-s390x-conformance-latest-kubetest2
+      testgrid-tab-name: ci-kubernetes-s390x-conformance-latest-master
+      testgrid-alert-email: sig-cloud-provider-ibm-s390x-alerts@kubernetes.io
+      testgrid-num-failures-to-alert: '2'
     spec:
       containers:
         - image: us-central1-docker.pkg.dev/k8s-staging-test-infra/images/kubekins-e2e:v20260512-1f34ef0df3-master
@@ -225,53 +230,33 @@ periodics:
                 HEART_BEAT_PID=$(echo $!)
               fi
 
-              #Setup of kubetest2 tf deployer and ginkgo tester
+              MARKER_VERSION=latest.txt;
+              K8S_BUILD_VERSION=$(curl -Ls https://dl.k8s.io/ci/$MARKER_VERSION);
+
+              #Setup of kubetest2 tf deployer
               make install-deployer-tf
               go install sigs.k8s.io/kubetest2/kubetest2-tester-ginkgo@latest
 
-              CLUSTER_NAME="config1-$(date +%s)"
-              kubetest2 tf  --target-provider vpc  --vpc-node-image-name ibm-ubuntu-22-04-4-minimal-s390x-3 --boskos-resource-type vpc \
-              --vpc-region ${BOSKOS_REGION} --vpc-zone ${BOSKOS_ZONE} --vpc-subnet ${BOSKOS_SUBNET_NAME} \
-              --vpc-name ${BOSKOS_RESOURCE_NAME} \
+              kubetest2 tf --target-provider vpc --vpc-node-image-name ibm-ubuntu-22-04-4-minimal-s390x-3 \
+              --boskos-resource-type vpc --vpc-region ${BOSKOS_REGION} --vpc-zone ${BOSKOS_ZONE} \
+              --vpc-subnet ${BOSKOS_SUBNET_NAME} --vpc-name ${BOSKOS_RESOURCE_NAME} \
               --vpc-resource-group ${BOSKOS_RESOURCE_GROUP} \
               --vpc-ssh-key k8s-s390x-ssh-key \
-              --vpc-node-profile bz2-4x16 \
-              --ssh-private-key /etc/secret-volume/ssh-privatekey \
-              --extra-vars=ansible_user:k8s-admin \
-              --extra-vars=ansible_become:true \
+              --vpc-node-profile bz2-4x16 --ssh-private-key /etc/secret-volume/ssh-privatekey \
+              --extra-vars=ansible_user:k8s-admin --extra-vars=ansible_become:true \
               --extra-vars=ansible_become_method:sudo \
               --extra-vars=k8s_tar_bundles:kubernetes-server-linux-s390x.tar.gz \
-              --extra-vars=pod_subnet:10.244.0.0/16 \
-              --extra-vars=cni_provider:flannel \
-              --build-version $(curl -Ls https://dl.k8s.io/ci/latest.txt) \
-              --cluster-name $CLUSTER_NAME \
-              --workers-count 2 \
-              --up --auto-approve --retry-on-tf-failure 3 \
-              --break-kubetest-on-upfail true \
-              --build-version $(curl -Ls https://dl.k8s.io/ci/latest.txt) \
-              --test=ginkgo -- --parallel 10 --test-package-dir ci --test-package-marker latest.txt --focus-regex='\[Conformance\]' --skip-regex='\[Serial\]'; rc1=$?
-              export KUBECONFIG="$(pwd)/$CLUSTER_NAME/kubeconfig"
-              export ARTIFACTS=$ARTIFACTS/serial_tests_artifacts
-              #Run Serial Conformance tests
-              kubetest2 tf --target-provider vpc --vpc-region ${BOSKOS_REGION} --vpc-zone ${BOSKOS_ZONE} \
-                --ignore-cluster-dir true \
-                --cluster-name $CLUSTER_NAME \
-                --down --auto-approve --ignore-destroy-errors \
-                --test=ginkgo -- --test-package-dir ci \
-                --test-package-marker latest.txt --focus-regex='\[Serial\].*\[Conformance\]'; rc2=$?
+              --extra-vars=pod_subnet:10.244.0.0/16 --extra-vars=cni_provider:flannel \
+              --workers-count 2 --cluster-name conformance-$(date +%s) --up --down --auto-approve \
+              --retry-on-tf-failure 3 --break-kubetest-on-upfail true --ignore-destroy-errors \
+              --build-version $K8S_BUILD_VERSION --release-marker $K8S_BUILD_VERSION \
+              --test=ginkgo -- --test-package-dir ci --test-package-marker $MARKER_VERSION \
+              --focus-regex='\[Conformance\]'
               if [ -n "${BOSKOS_HOST:-}" ]; then
                 url="http://${BOSKOS_HOST}/release?name=${BOSKOS_RESOURCE_NAME}&dest=dirty&owner=${USER}"
-                status_code=$(curl -w '%{http_code}' -X POST ${url})
+                status_code=$(curl  -s -o /dev/null -w '%{http_code}' -X POST ${url})
                 if [[ ${status_code} != 200 ]]; then
                   echo "Failed to release resource: ${BOSKOS_RESOURCE_NAME}"
                   exit 1
                 fi
-              fi
-
-              if [ $rc1 != 0 ]; then
-                  echo "ERROR: Non Serial k8s Conformance tests exited with code: $rc1"
-                  exit $rc1
-              elif [ $rc2 != 0 ]; then
-                  echo "ERROR: Serial k8s Conformance tests exited with code: $rc2"
-                  exit $rc2
               fi
