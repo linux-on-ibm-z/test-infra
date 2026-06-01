@@ -15,6 +15,7 @@
 # Includes basic workspace setup, with gcloud and a bootstrap runner
 
 FROM debian:bookworm-20251020
+ARG TARGETARCH
 
 WORKDIR /workspace
 RUN mkdir -p /workspace
@@ -55,13 +56,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && python3 -m pip install --no-cache-dir --break-system-packages --upgrade pip setuptools wheel
 
-# Install gcloud
+# Install gcloud (not available on ppc64le and s390x)
 
 ENV PATH=/google-cloud-sdk/bin:/workspace:${PATH} \
     CLOUDSDK_CORE_DISABLE_PROMPTS=1
 
 ARG GCLOUD_SDK_URL=https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz
-RUN wget -O google-cloud-sdk.tar.gz -q $GCLOUD_SDK_URL && \
+RUN if [ "${TARGETARCH}" != "ppc64le" ] && [ "${TARGETARCH}" != "s390x" ]; then \
+    wget -O google-cloud-sdk.tar.gz -q $GCLOUD_SDK_URL && \
     tar xzf google-cloud-sdk.tar.gz -C / && \
     rm google-cloud-sdk.tar.gz && \
     /google-cloud-sdk/install.sh \
@@ -70,7 +72,10 @@ RUN wget -O google-cloud-sdk.tar.gz -q $GCLOUD_SDK_URL && \
     --path-update=false \
     --usage-reporting=false && \
     gcloud components install alpha beta kubectl && \
-    gcloud info | tee /workspace/gcloud-info.txt
+    gcloud info | tee /workspace/gcloud-info.txt; \
+    else \
+    echo "gcloud SDK is not available for ${TARGETARCH} architecture" | tee /workspace/gcloud-info.txt; \
+    fi
 
 
 #
